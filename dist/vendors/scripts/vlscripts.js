@@ -1,0 +1,1 @@
+!function(){const e=window.location.pathname;document.querySelectorAll(".navL a[href], .mobN a[href]").forEach((a=>{const t=new URL(a.href).pathname;a.classList.remove("active"),("/"===e&&"/"===t||"/search"===e&&"/search"===t||"/p/browse.html"===e&&"/p/browse.html"===t||"/p/user-favourite.html"===e&&"/p/user-favourite.html"===t)&&a.classList.add("active")}))}();
