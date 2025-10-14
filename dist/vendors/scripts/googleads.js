@@ -2,6 +2,7 @@
 
 (function() {
   const publisherId = 'ca-pub-6775067462642603';
+
   const adConfig = {
     slot1: {
       html: `<!-- VergeLyrics_AD1 -->
@@ -33,11 +34,20 @@
     },
   };
 
-  // ---- Load AdSense script once ----
+  // --- Load AdSense script only once ---
   function loadAdsenseOnce() {
     if (window.__adsenseLoaded) return Promise.resolve();
     return new Promise((resolve, reject) => {
       if (window.adsbygoogle) { window.__adsenseLoaded = true; return resolve(); }
+
+      const existing = document.querySelector(
+        `script[src^="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]`
+      );
+      if (existing) {
+        window.__adsenseLoaded = true;
+        return resolve();
+      }
+
       const s = document.createElement('script');
       s.async = true;
       s.crossOrigin = 'anonymous';
@@ -48,7 +58,7 @@
     });
   }
 
-  // ---- Insert ad into slot ----
+  // --- Render one ad safely ---
   function renderAd(slotId) {
     const el = document.getElementById(slotId);
     if (!el || el.dataset.loaded === 'true') return;
@@ -57,12 +67,36 @@
     if (!conf) return;
 
     el.innerHTML = conf.html;
-    (adsbygoogle = window.adsbygoogle || []).push({});
-    el.dataset.loaded = 'true';
+    const ins = el.querySelector('ins');
 
-    // Retry if unfilled after 10s
+    // Wait until width > 0 (avoid availableWidth=0 error)
+    const tryPush = () => {
+      const width = ins.offsetWidth;
+      const visible = ins.offsetParent !== null;
+
+      if (width > 0 && visible) {
+        try {
+          (adsbygoogle = window.adsbygoogle || []).push({});
+          el.dataset.loaded = 'true';
+          // console.log(`[Ad Loaded] ${slotId}`);
+        } catch (err) {
+          console.warn(`[Ad Error] ${slotId}:`, err);
+        }
+      } else {
+        if (!ins.dataset.tryCount) ins.dataset.tryCount = 0;
+        if (ins.dataset.tryCount++ < 20) {
+          setTimeout(tryPush, 250); // retry for ~5s total
+        } else {
+          console.warn(`[Ad Timeout] ${slotId} never became visible`);
+        }
+      }
+    };
+
+    tryPush();
+
+    // Retry if ad unfilled (height < 50)
     setTimeout(() => {
-      if (el.offsetHeight < 50) { // heuristic for unfilled
+      if (el.offsetHeight < 50) {
         console.warn(`[Ad Retry] ${slotId}`);
         el.dataset.loaded = 'false';
         el.innerHTML = '';
@@ -71,7 +105,7 @@
     }, 10000);
   }
 
-  // ---- Observe visible ads ----
+  // --- Observe when ads become visible ---
   function initAdObserver() {
     const ads = document.querySelectorAll('.c-ad > div[id]');
     if (!ads.length) return;
@@ -89,7 +123,7 @@
           loadedCount++;
         }
 
-        // disconnect when all filled
+        // disconnect when all ads loaded
         if (loadedCount >= total) {
           setTimeout(() => observer.disconnect(), 3000);
         }
@@ -98,14 +132,16 @@
 
     ads.forEach(el => observer.observe(el));
 
-    // --- Watch for dynamically added .c-ad elements ---
+    // --- Watch for dynamically added ads (.c-ad) ---
     const mo = new MutationObserver(muts => {
       muts.forEach(m => {
         m.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.matches('.c-ad > div[id]')) {
-            observer.observe(node);
-          } else if (node.nodeType === 1) {
-            node.querySelectorAll('.c-ad > div[id]').forEach(inner => observer.observe(inner));
+          if (node.nodeType === 1) {
+            if (node.matches('.c-ad > div[id]')) {
+              observer.observe(node);
+            } else {
+              node.querySelectorAll('.c-ad > div[id]').forEach(inner => observer.observe(inner));
+            }
           }
         });
       });
@@ -113,7 +149,7 @@
     mo.observe(document.body, { childList: true, subtree: true });
   }
 
-  // ---- Safe initializer (works even if DOM already loaded) ----
+  // --- Safe init (works even if DOM already loaded) ---
   function ready(fn) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', fn);
@@ -122,11 +158,11 @@
     }
   }
 
-  // ---- Start ----
+  // --- Start ---
   ready(() => {
     loadAdsenseOnce()
       .then(initAdObserver)
-      .catch(e => console.error('AdSense load failed:', e));
+      .catch(e => console.error('AdSense failed to load:', e));
   });
 })();
 
