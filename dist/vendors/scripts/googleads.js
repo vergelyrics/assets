@@ -117,7 +117,7 @@
         if (DEMO_MODE) {
             html = `<ins class="adB">Demo Ad Loaded: ${adSlot} (${isDesktop ? 'Desktop' : 'Mobile'})</ins>`;
         } else {
-            html = `<ins class="adsbygoogle" ${adStyleAttr} data-ad-client="${AD_CLIENT_ID}" data-full-width-responsive="false" data-ad-format="rectangle" data-ad-slot="${adSlot}" ${adFormatAttr}></ins>`;
+            html = `<ins class="adsbygoogle" ${adStyleAttr} data-ad-client="${AD_CLIENT_ID}" data-full-width-responsive="false" data-ad-slot="${adSlot}" ${adFormatAttr}></ins>`;
         }
 
         container.insertAdjacentHTML('beforeend', html);
