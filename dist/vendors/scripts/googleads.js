@@ -4,7 +4,7 @@
   /**
    * Configuration
    */
-  const DEMO_MODE = false; // true = show placeholder ads
+  const DEMO_MODE = false; // true = placeholder mode
   const AD_CLIENT_ID = 'ca-pub-6775067462642603';
 
   const body = document.body;
@@ -21,8 +21,8 @@
     slot1: { slotId: '6361622853', desktop: { style: 'display:inline-block;width:728px;height:90px;' }, mobile: { style: 'display:block;width:300px;height:250px;', format: 'auto' } },
     slot2: { slotId: '2324490715', desktop: { style: 'display:inline-block;width:728px;height:90px;' }, mobile: { style: 'display:block;width:300px;height:250px;', format: 'auto' } },
     slot3: { slotId: '5472881313', desktop: { style: 'display:inline-block;width:728px;height:90px;' }, mobile: { style: 'display:block;width:300px;height:250px;', format: 'auto' } },
-    
-    // ✅ Custom fluid in-article ad format for slot4 & slot5
+
+    // ✅ Custom fluid in-article format
     slot4: { slotId: '9166032519', type: 'fluid' },
     slot5: { slotId: '3907441751', type: 'fluid' },
   };
@@ -51,8 +51,8 @@
 
     let adHTML = '';
 
-    // ✅ Custom fluid in-article style for slot4 and slot5
     if (slotConfig.type === 'fluid') {
+      // ✅ In-article fluid ad
       adHTML = `
         <ins class="adsbygoogle"
              style="display:block; text-align:center;"
@@ -61,7 +61,7 @@
              data-ad-client="${AD_CLIENT_ID}"
              data-ad-slot="${slotConfig.slotId}"></ins>`;
     } else {
-      // Regular ad format for other slots
+      // ✅ Normal responsive ad
       const currentConfig = isDesktop ? slotConfig.desktop : slotConfig.mobile;
       const styleAttr = currentConfig.style ? `style="${currentConfig.style}"` : '';
       const formatAttr = currentConfig.format ? `data-ad-format="${currentConfig.format}"` : '';
@@ -75,21 +75,22 @@
              ${formatAttr}></ins>`;
     }
 
+    // Insert and immediately push the ad
     container.insertAdjacentHTML('beforeend', adHTML);
 
     if (!DEMO_MODE) {
-      setTimeout(() => {
-        try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {}
-      }, 300);
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch (e) {
+        console.warn('AdSense load failed for:', slotConfig.slotId, e);
+      }
     }
 
     container.setAttribute('data-loaded', 'true');
   }
 
   /**
-   * Lazy-load ads with optimized observer
+   * Lazy-load ads with smart observer
    */
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -100,12 +101,12 @@
 
         if (slotConfig) {
           loadAd(container, slotConfig);
-          observer.unobserve(container); // stop observing once loaded
+          observer.unobserve(container); // Stop observing once loaded
         }
       }
     });
 
-    // ✅ Disconnect observer once all ads are loaded
+    // ✅ Disconnect if all ads loaded
     const allAdContainers = document.querySelectorAll('.c-ad > div[id]');
     const remaining = Array.from(allAdContainers).filter(c => !c.getAttribute('data-loaded'));
     if (remaining.length === 0) observer.disconnect();
@@ -124,7 +125,7 @@
   });
 
   /**
-   * Load AdSense script
+   * Load AdSense script once
    */
   if (!DEMO_MODE) loadAdSenseScript(() => {});
 })(window, document);
