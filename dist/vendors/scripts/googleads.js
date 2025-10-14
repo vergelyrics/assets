@@ -56,7 +56,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;height:250px;',
+        style: 'display:block;width:300px;height:250px;',
         format: 'auto',
       },
     },
@@ -67,7 +67,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;height:250px;',
+        style: 'display:block;width:300px;height:250px;',
         format: 'auto',
       },
     },
@@ -110,7 +110,7 @@
       html = `<ins class="adsbygoogle" ${adStyleAttr}
         data-ad-client="${AD_CLIENT_ID}"
         data-ad-slot="${adSlot}"
-        data-full-width-responsive="true"
+        data-full-width-responsive="false"
         ${adFormatAttr}></ins>`;
     }
 
