@@ -4,7 +4,7 @@
   /**
    * Configuration
    */
-  const DEMO_MODE = false; // true = placeholder demo ads (no push)
+  const DEMO_MODE = false;
   const AD_CLIENT_ID = 'ca-pub-6775067462642603';
 
   const body = document.body;
@@ -14,10 +14,6 @@
   const isMobile = body.classList.contains('mobile');
   if (!isDesktop && !isMobile) return;
 
-  /**
-   * Ad slot configurations
-   * slot4 and slot5 are in-article fluid slots (as requested)
-   */
   const adSlotsConfig = {
     slot1: {
       slotId: '6361622853',
@@ -34,101 +30,127 @@
       desktop: { style: 'display:inline-block;width:728px;height:90px;' },
       mobile: { style: 'display:block;width:300px;height:250px;', format: 'auto' }
     },
-
-    // fluid / in-article slots (user-provided slot IDs)
     slot4: { slotId: '9166032519', type: 'fluid' },
     slot5: { slotId: '3907441751', type: 'fluid' }
   };
 
   let adsScriptLoaded = false;
-  /**
-   * Dynamically load Google AdSense script once.
-   * Use data-ad-client attribute to ensure correct client association.
-   */
+
   function loadAdSenseScript(callback) {
     if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) {
-      // If script already present, try to detect loaded state quickly.
-      // The script might already be loaded; we mark it true if window.adsbygoogle exists.
       adsScriptLoaded = !!window.adsbygoogle;
       callback();
       return;
     }
 
-    const script = document.createElement('script');
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
-    script.setAttribute('data-ad-client', AD_CLIENT_ID);
-    script.addEventListener('load', () => {
+    const s = document.createElement('script');
+    s.async = true;
+    s.crossOrigin = 'anonymous';
+    s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+    s.setAttribute('data-ad-client', AD_CLIENT_ID);
+    s.addEventListener('load', () => {
       adsScriptLoaded = true;
       callback();
     });
-    script.addEventListener('error', () => {
-      // If AdSense script fails to load, we still call callback so the page doesn't hang.
+    s.addEventListener('error', () => {
       adsScriptLoaded = !!window.adsbygoogle;
       callback();
     });
-    document.head.appendChild(script);
+    document.head.appendChild(s);
   }
 
-  /**
-   * Try to push ad rendering when ins element has measurable width (>0)
-   * - initialDelay: initial wait before starting checks (ms)
-   * - maxWait: maximum total time to keep checking (ms)
-   * - checkInterval: interval between width checks (ms)
-   */
-  function attemptPushWhenVisible(insEl, slotId, initialDelay = 0, maxWait = 2000, checkInterval = 50) {
-    if (DEMO_MODE) return;
-
-    const start = Date.now();
-
-    const tryPush = () => {
-      // If ads script hasn't loaded yet, wait a bit
-      if (!adsScriptLoaded && typeof window.adsbygoogle === 'undefined') {
-        if (Date.now() - start < maxWait) {
-          setTimeout(tryPush, checkInterval);
-          return;
-        }
-        // fallback: continue and let push attempt fail gracefully
+  // Wait for the adsbygoogle script to be usable (promisified)
+  function waitForAdsScript(maxWait = 5000, poll = 50) {
+    return new Promise((resolve) => {
+      if (adsScriptLoaded || typeof window.adsbygoogle !== 'undefined') {
+        adsScriptLoaded = true;
+        return resolve(true);
       }
-
-      const rect = insEl.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {
-          // Log but don't re-insert
-          console.warn('AdSense push() failed for slot', slotId, e);
+      const start = Date.now();
+      const id = setInterval(() => {
+        if (typeof window.adsbygoogle !== 'undefined' || adsScriptLoaded) {
+          adsScriptLoaded = true;
+          clearInterval(id);
+          return resolve(true);
         }
-        return;
-      }
-
-      // not visible or width 0 yet
-      if (Date.now() - start < maxWait) {
-        setTimeout(tryPush, checkInterval);
-      } else {
-        // final attempt (will likely produce TagError if width still 0)
-        try {
-          (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {
-          console.warn('AdSense final push() attempt failed for slot', slotId, e);
+        if (Date.now() - start > maxWait) {
+          clearInterval(id);
+          // resolve false to still allow a final attempt (it will likely fail)
+          return resolve(false);
         }
-      }
-    };
-
-    // start after requested initial delay
-    setTimeout(tryPush, initialDelay);
+      }, poll);
+    });
   }
 
-  /**
-   * Insert ad markup and trigger push (with safety checks for fluid/mobile)
-   */
-  function loadAd(container, slotConfig) {
+  // Wait until element (or its parent) receives a positive width
+  function waitForPositiveSize(el, timeout = 5000) {
+    return new Promise((resolve) => {
+      try {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) return resolve(true);
+      } catch (e) {
+        // continue to observer/fallback
+      }
+
+      let resolved = false;
+      const finish = (ok) => {
+        if (resolved) return;
+        resolved = true;
+        if (ro) ro.disconnect();
+        clearTimeout(timer);
+        resolve(ok);
+      };
+
+      // If ResizeObserver is available, prefer it
+      let ro = null;
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const cr = entry.contentRect || {};
+            if ((cr.width && cr.width > 0) || (cr.height && cr.height > 0)) {
+              finish(true);
+              return;
+            }
+          }
+        });
+        try {
+          ro.observe(el);
+          // also observe parent because some layouts set parent width
+          if (el.parentElement) ro.observe(el.parentElement);
+        } catch (e) {
+          // observation failed — fall back
+          if (ro) {
+            try { ro.disconnect(); } catch (er) {}
+            ro = null;
+          }
+        }
+      }
+
+      // fallback: poll via requestAnimationFrame until width>0 or timeout
+      const start = Date.now();
+      const poll = () => {
+        try {
+          const r = el.getBoundingClientRect();
+          if (r.width > 0 && r.height > 0) return finish(true);
+        } catch (e) {}
+        if (Date.now() - start > timeout) return finish(false);
+        requestAnimationFrame(poll);
+      };
+
+      const timer = setTimeout(() => {
+        finish(false);
+      }, timeout);
+
+      // start fallback poll (this will quickly return if ResizeObserver already resolved)
+      requestAnimationFrame(poll);
+    });
+  }
+
+  function insertInsAndPush(container, slotConfig) {
     if (container.hasAttribute('data-loaded')) return;
-
     let adHTML = '';
+
     if (slotConfig.type === 'fluid') {
-      // fluid in-article markup (user requested)
       adHTML = `
         <ins class="adsbygoogle"
              style="display:block; text-align:center;"
@@ -137,11 +159,9 @@
              data-ad-client="${AD_CLIENT_ID}"
              data-ad-slot="${slotConfig.slotId}"></ins>`;
     } else {
-      // regular responsive ad markup
       const currentConfig = isDesktop ? slotConfig.desktop : slotConfig.mobile;
       const styleAttr = currentConfig.style ? `style="${currentConfig.style}"` : '';
       const formatAttr = currentConfig.format ? `data-ad-format="${currentConfig.format}"` : '';
-
       adHTML = `
         <ins class="adsbygoogle"
              ${styleAttr}
@@ -151,77 +171,72 @@
              ${formatAttr}></ins>`;
     }
 
-    // insert the <ins> node
     container.insertAdjacentHTML('beforeend', adHTML);
     container.setAttribute('data-loaded', 'true');
 
-    // pick the inserted ins element (the last child is our inserted ins)
+    // pick the inserted ins node
     const insEl = container.querySelector('ins.adsbygoogle:last-of-type') || container.querySelector('ins.adsbygoogle');
+    if (!insEl) return;
 
-    if (!insEl) {
-      // nothing to push, bail out
-      return;
-    }
+    // async flow: wait for script and positive size then push
+    (async () => {
+      // Wait for AdSense script to be available (try up to 5s)
+      const scriptReady = await waitForAdsScript(5000, 50);
+      if (!scriptReady) {
+        console.warn('AdSense script not ready within timeout for slot', slotConfig.slotId);
+        // we'll still continue to wait for size and attempt push at the end (final attempt may fail)
+      }
 
-    // Choose delay strategy:
-    // - For fluid slots on mobile: use a longer initial delay (500ms)
-    // - For fluid slots on desktop: shorter delay (150ms)
-    // - For non-fluid slots: short delay (100ms)
-    let initialDelay = 100;
-    if (slotConfig.type === 'fluid') {
-      initialDelay = isMobile ? 500 : 150;
-    } else {
-      initialDelay = isMobile ? 200 : 100;
-    }
+      // Wait up to 5s for the ins element or parent to get a positive width
+      const sizeReady = await waitForPositiveSize(insEl, isMobile ? 5000 : 2500);
+      if (!sizeReady) {
+        console.warn('Ins element did not get positive size in time for slot', slotConfig.slotId);
+      }
 
-    // Try pushing only after ensuring width > 0, but allow retries up to maxWait
-    attemptPushWhenVisible(insEl, slotConfig.slotId, initialDelay, 2500, 60);
-  }
-
-  /**
-   * Observer: lazy-load ads when containers intersect viewport.
-   * Observer auto-unobserves each container after load and disconnects when all done.
-   */
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const container = entry.target;
-        const slotName = container.id;
-        const slotConfig = adSlotsConfig[slotName];
-        if (slotConfig) {
-          loadAd(container, slotConfig);
-          observer.unobserve(container);
+      // Now attempt push (this should succeed if both script and width are ready)
+      if (!DEMO_MODE) {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+          // success (no log needed)
+        } catch (e) {
+          // still might fail if width is 0 — log full info
+          console.warn('AdSense push() failed for slot', slotConfig.slotId, e);
         }
       }
+    })();
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const container = entry.target;
+      const slotName = container.id;
+      const slotConfig = adSlotsConfig[slotName];
+      if (!slotConfig) return;
+
+      insertInsAndPush(container, slotConfig);
+      observer.unobserve(container);
     });
 
-    // Disconnect observer if all ad containers are loaded
+    // auto-disconnect when all loaded
     const allAdContainers = document.querySelectorAll('.c-ad > div[id]');
     const remaining = Array.from(allAdContainers).filter(c => !c.getAttribute('data-loaded'));
-    if (remaining.length === 0) {
-      observer.disconnect();
-    }
+    if (remaining.length === 0) observer.disconnect();
   }, {
     root: null,
     rootMargin: '0px',
     threshold: 0.1
   });
 
-  /**
-   * Start observing configured ad container elements
-   * The markup expected: .c-ad > div#slotX  (e.g. <div class="c-ad"><div id="slot4"></div></div>)
-   */
+  // Observe containers
   Object.keys(adSlotsConfig).forEach(slotName => {
     const el = document.getElementById(slotName);
     if (el) observer.observe(el);
   });
 
-  // Load the AdSense script once (only when not in demo mode)
+  // Load script
   if (!DEMO_MODE) {
     loadAdSenseScript(() => {
-      // If script was already loaded and some containers are currently in viewport,
-      // IntersectionObserver callbacks will call loadAd and attemptPushWhenVisible will
-      // see adsScriptLoaded === true and perform immediate pushes as widths become > 0.
       adsScriptLoaded = adsScriptLoaded || !!window.adsbygoogle;
     });
   }
