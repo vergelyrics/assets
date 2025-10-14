@@ -23,7 +23,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;min-height:200px;',
+        style: 'display:block;width:100%;height:90px',
         format: 'auto',
       },
     },
@@ -34,7 +34,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;min-height:200px;',
+        style: 'display:block;width:100%;height:90px',
         format: 'auto',
       },
     },
@@ -45,7 +45,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;min-height:200px;',
+        style: 'display:block;width:100%;height:90px',
         format: 'auto',
       },
     },
@@ -56,7 +56,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;min-height:250px;',
+        style: 'display:block;width:100%;height:250px;',
         format: 'auto',
       },
     },
@@ -67,7 +67,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;min-height:250px;',
+        style: 'display:block;width:100%;height:250px;',
         format: 'auto',
       },
     },
