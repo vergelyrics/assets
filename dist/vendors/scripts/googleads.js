@@ -23,7 +23,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;height:90px',
+        style: 'display:block;width:728px;height:90px',
         format: 'auto',
       },
     },
@@ -34,7 +34,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;height:90px',
+        style: 'display:block;width:728px;height:90px',
         format: 'auto',
       },
     },
@@ -45,7 +45,7 @@
         format: '',
       },
       mobile: {
-        style: 'display:block;width:100%;height:90px',
+        style: 'display:block;width:728px;height:90px',
         format: 'auto',
       },
     },
