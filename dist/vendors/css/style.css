@@ -1,1 +1,1 @@
-.clear{clear:both} body.mobile:has(.vlPlayer) {overflow:hidden} .vlPlayer{z-index:9999999999!important}
+.clear{clear:both} body.mobile:has(.vlPlayer) {overflow:hidden} .vlPlayer{z-index:9999999999!important} .toastNotif{z-index:99999999999}
