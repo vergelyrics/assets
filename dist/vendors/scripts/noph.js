@@ -15,23 +15,38 @@
     }
   ];
 
-  function loadScript(config) {
+  // Function to load scripts one after another
+  function loadScriptSequentially(index) {
+    if (index >= scripts.length) {
+      // All scripts loaded — now run the inline initialization
+      const inlineScript = document.createElement("script");
+      inlineScript.textContent = `
+        window.ezstandalone = window.ezstandalone || {};
+        ezstandalone.cmd = ezstandalone.cmd || [];
+        console.log("✅ ezstandalone initialized");
+      `;
+      document.head.appendChild(inlineScript);
+      return;
+    }
+
+    const config = scripts[index];
     const s = document.createElement("script");
     s.src = config.src;
+
+    // Set all custom attributes
     for (const [key, value] of Object.entries(config.attrs || {})) {
       s.setAttribute(key, value);
     }
+
+    // When current script finishes loading, load the next one
+    s.onload = function() {
+      loadScriptSequentially(index + 1);
+    };
+
+    // Append current script to <head>
     document.head.appendChild(s);
   }
 
-  // Load all scripts sequentially
-  scripts.forEach(loadScript);
-
-  // Initialize ezstandalone after scripts
-  const inlineScript = document.createElement("script");
-  inlineScript.textContent = `
-    window.ezstandalone = window.ezstandalone || {};
-    ezstandalone.cmd = ezstandalone.cmd || [];
-  `;
-  document.head.appendChild(inlineScript);
+  // Start the chain
+  loadScriptSequentially(0);
 })();
