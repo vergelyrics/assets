@@ -5,7 +5,7 @@
   // --- Dynamic Style ---
   const style=document.createElement('style');
   style.id='gpt-ads-css';
-  style.textContent=`.gpt-loaded .vTheme{padding-bottom:calc(8rem + 67px)} .gpt-ads{bottom:67px} .gpt-in{min-height:90px}`;
+  style.textContent=`.gpt-loaded .vTheme{padding-bottom:calc(8rem + 70px)} .gpt-ads{bottom:70px;max-height:90px;overflow:hidden} .gpt-in{min-height:90px} .gpt-in > *{max-height:90px}`;
   document.head.appendChild(style);
 
   const root=document.getElementById(adContainerId);
