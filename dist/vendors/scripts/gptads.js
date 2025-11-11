@@ -41,7 +41,7 @@
       if(adDiv&&getComputedStyle(adDiv).display==='none'){
         console.error('GPT failed, switching to AdSense');
         const gptIn=adDiv.parentElement;
-        gptIn.innerHTML='<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6775067462642603" data-ad-slot="1783335088" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+        gptIn.innerHTML='<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6775067462642603" data-ad-format="horizontal" data-ad-slot="1783335088" data-full-width-responsive="false"></ins>';
         setTimeout(function(){(adsbygoogle=window.adsbygoogle||[]).push({});},2000);
       }
     },5000);
